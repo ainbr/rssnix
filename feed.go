@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"unicode/utf8"
+        "encoding/json"
 
 	"github.com/mmcdole/gofeed"
 	log "github.com/sirupsen/logrus"
@@ -42,6 +43,11 @@ func DeleteFeedFiles(name string) {
 	os.RemoveAll(Config.FeedDirectory + "/" + name)
 }
 
+type FeedJSONFile struct {
+	Link string `json:"link"`
+	PubDate string `json:"pubDate"`
+}
+
 func UpdateFeed(name string, deleteFiles bool) {
 	log.Info("Updating feed '" + name + "'")
 	fp := gofeed.NewParser()
@@ -72,7 +78,22 @@ func UpdateFeed(name string, deleteFiles bool) {
 			continue
 		}
 		defer file.Close()
-		_, err = file.WriteString(item.Description + "\n" + item.Link + "\n" + item.Published + "\n" + item.Content)
+
+                jsonData := &FeedJSONFile{
+                  Link: item.Link,
+                  PubDate: item.Published,
+                }
+
+                // marshal
+                jsonBytes, err := json.Marshal(jsonData)
+
+                if err != nil {
+                  log.Error("Failed to create json for article titled '" + item.Title + "'")
+                  continue
+                }
+
+                _, err = file.WriteString(string(jsonBytes))
+
 		if err != nil {
 			log.Error("Failed to write content to a file for article titled '" + item.Title + "'")
 			continue
